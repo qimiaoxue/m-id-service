@@ -1,0 +1,32 @@
+version: "3.9"
+services:
+  db1:
+    image: mysql/mysql-server:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'id_service_db'
+      MYSQL_ROOT_PASSWORD: 'test'
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - '3306:3306'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 500M
+  db2:
+    image: mysql/mysql-server:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'id_service_db'
+      MYSQL_ROOT_PASSWORD: 'test'
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - '3307:3306'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 500M
+
+  
