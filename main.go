@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	logger "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"xorm.io/xorm"
 )
 
@@ -13,43 +17,40 @@ type IdTable struct {
 }
 
 func main() {
-
-	r := gin.Default()
-	r.GET("/get", func(c *gin.Context) {
-		id1, id2 := Get_ids("db1")
-		c.JSON(200, gin.H{
-			"id1": id1,
-			"id2": id2,
-		})
-	})
-	r.Run()
-}
-
-func Get_ids(db_name string) (ID1 int64, ID2 int64) {
+	db_name := os.Getenv("db_name")
 	var err error
-	db1, err := xorm.NewEngine("mysql", "root:test@tcp(127.0.0.1:3306)/id_service_db")
+	db, err := xorm.NewEngine("mysql", db_name)
 	if err != nil {
 		fmt.Printf("db1 error is %v", err)
 		return
 	}
-	db2, err := xorm.NewEngine("mysql", "root:test@tcp(127.0.0.1:3307)/id_service_db")
-	if err != nil {
-		fmt.Printf("db2 error is %v", err)
-		return
-	}
-	id1 := new(IdTable)
-	cnt1, err := db1.Insert(id1)
+	fmt.Printf("db_name: %v\n", db_name)
+	r := gin.Default()
+	r.GET("/get", func(c *gin.Context) {
+		id := Get_id(db, db_name)
+		c.JSON(200, gin.H{
+			"id": id,
+		})
+	})
+	go func() {
+		logger.Println(http.ListenAndServe(":6060", nil))
+	}()
+
+	go func() {
+		if err := http.ListenAndServe(":8888", nil); err != nil {
+			logger.Error("initPprofHttpAsync error", zap.Error(err))
+		}
+	}()
+	r.Run()
+}
+
+func Get_id(db *xorm.Engine, db_name string) (ID int64) {
+	id := new(IdTable)
+	cnt, err := db.Insert(id)
 	if err != nil {
 		fmt.Printf("The db1 error is %v", err)
 		return
 	}
-	fmt.Printf("cnt1: %d, id1: %d\n", cnt1, id1.Id)
-	id2 := new(IdTable)
-	cnt2, err := db2.Insert(id2)
-	if err != nil {
-		fmt.Printf("The db2 error is %v", err)
-		return
-	}
-	fmt.Printf("cnt2: %d, id2: %d\n", cnt2, id2.Id)
-	return id1.Id, id2.Id
+	fmt.Printf("cnt: %d, id: %d\n", cnt, id.Id)
+	return id.Id
 }

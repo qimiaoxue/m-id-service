@@ -1,5 +1,47 @@
 version: "3.9"
 services:
+  app1:
+    build:
+      dockerfile: Dockerfile
+    volumes:
+      - .:/opt/app/api
+      - ./logs/:/logs/app1
+    expose:
+    - "6060"
+    - "8080"
+    - "8888"
+    ports:
+      - '6060:6060'
+      - '8080:8080'
+      - '8888:8888'
+    depends_on:
+      - db1
+    environment:
+      - 'db_name=root:test@tcp(db1:3306)/id_service_db'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 100M
+  app2:
+    build:
+      dockerfile: Dockerfile
+    volumes:
+      - .:/opt/app/api
+      - ./logs/:/logs/app2
+    expose:
+    - "8080"
+    ports:
+      - '8088:8080'
+    depends_on:
+      - db2
+    environment:
+      - 'db_name=root:test@tcp(db2:3306)/id_service_db'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 100M
   db1:
     image: mysql/mysql-server:8.0
     restart: always
@@ -14,6 +56,10 @@ services:
         limits:
           cpus: '0.5'
           memory: 500M
+    volumes:
+      - db1:/var/lib/mysql
+      - ./db1/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db_conf1:/etc/mysql/conf.d
   db2:
     image: mysql/mysql-server:8.0
     restart: always
@@ -28,5 +74,21 @@ services:
         limits:
           cpus: '0.5'
           memory: 500M
-
-  
+    volumes:
+      - db2:/var/lib/mysql
+      - ./db2/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db_conf2:/etc/mysql/conf.d
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+    ports:
+      - "4000:4000"
+volumes:
+  db1:
+    driver: local
+  db2:
+    driver: local
